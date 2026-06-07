@@ -1,0 +1,284 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+
+import {
+  ApiError,
+  ApiUser,
+  Match,
+  Prediction,
+  apiRequest,
+} from "@/lib/api";
+
+type DashboardState =
+  | { status: "loading" }
+  | { status: "error"; message: string }
+  | {
+      status: "ready";
+      user: ApiUser;
+      matches: Match[];
+      predictions: Map<number, Prediction>;
+    };
+
+const matchStatusLabels: Record<Match["status"], string> = {
+  cancelled: "Abgesagt",
+  finished: "Beendet",
+  in_progress: "Live",
+  postponed: "Verschoben",
+  scheduled: "Geplant",
+};
+
+const predictionStatusLabels: Record<Prediction["resultStatus"], string> = {
+  correct: "Richtig",
+  pending: "Offen",
+  wrong: "Daneben",
+};
+
+export function TippspielDashboard() {
+  const router = useRouter();
+  const [state, setState] = useState<DashboardState>({ status: "loading" });
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function loadDashboard() {
+      try {
+        const session = await apiRequest<{ user: ApiUser }>("/api/auth/me");
+        const [matches, predictions] = await Promise.all([
+          apiRequest<Match[]>("/api/matches"),
+          apiRequest<Prediction[]>("/api/predictions"),
+        ]);
+
+        if (isActive) {
+          setState({
+            status: "ready",
+            user: session.user,
+            matches,
+            predictions: new Map(
+              predictions.map((prediction) => [prediction.matchId, prediction]),
+            ),
+          });
+        }
+      } catch (requestError) {
+        if (requestError instanceof ApiError && requestError.status === 401) {
+          router.replace("/");
+          return;
+        }
+
+        if (isActive) {
+          setState({
+            status: "error",
+            message:
+              "Spielplan und Tipps konnten nicht geladen werden. Bitte lade die Seite neu.",
+          });
+        }
+      }
+    }
+
+    void loadDashboard();
+
+    return () => {
+      isActive = false;
+    };
+  }, [router]);
+
+  async function handleLogout() {
+    setIsLoggingOut(true);
+
+    try {
+      await apiRequest("/api/auth/logout", { method: "POST" });
+    } catch {
+      // The login page remains the safest destination if the BFF is unavailable.
+    } finally {
+      router.replace("/");
+    }
+  }
+
+  if (state.status === "loading") {
+    return <DashboardLoading />;
+  }
+
+  if (state.status === "error") {
+    return (
+      <section className="dashboard-state" role="alert">
+        <span className="state-icon">!</span>
+        <h1>Kurze Auszeit</h1>
+        <p>{state.message}</p>
+        <button className="secondary-button" onClick={() => window.location.reload()}>
+          Erneut versuchen
+        </button>
+      </section>
+    );
+  }
+
+  const nextMatch = state.matches.find((match) => match.status === "scheduled");
+  const predictedCount = state.predictions.size;
+
+  return (
+    <div className="dashboard-shell">
+      <header className="dashboard-header">
+        <div className="compact-brand">
+          <span>90</span>
+          <small>MIN</small>
+        </div>
+        <div className="header-actions">
+          <span className="user-chip">{state.user.username}</span>
+          <button
+            className="text-button"
+            disabled={isLoggingOut}
+            onClick={handleLogout}
+          >
+            {isLoggingOut ? "Abmelden …" : "Abmelden"}
+          </button>
+        </div>
+      </header>
+
+      <section className="dashboard-hero">
+        <div>
+          <p className="eyebrow">Dein WM-Tippspiel</p>
+          <h1>Spielplan</h1>
+          <p>
+            Die erste Übersicht steht. Tipps bearbeiten folgt im nächsten
+            Feature-Schritt.
+          </p>
+        </div>
+        <dl className="summary-grid">
+          <div>
+            <dt>Spiele</dt>
+            <dd>{state.matches.length}</dd>
+          </div>
+          <div>
+            <dt>Getippt</dt>
+            <dd>{predictedCount}</dd>
+          </div>
+          <div>
+            <dt>Nächstes Spiel</dt>
+            <dd>{nextMatch ? formatShortDate(nextMatch.kickoffAt) : "–"}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section className="matches-section" aria-labelledby="matches-heading">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Aktueller Stand</p>
+            <h2 id="matches-heading">Alle Begegnungen</h2>
+          </div>
+          <span className="readonly-badge">Nur Ansicht</span>
+        </div>
+
+        {state.matches.length === 0 ? (
+          <div className="empty-state">
+            <span aria-hidden="true">○</span>
+            <h3>Noch keine Spiele</h3>
+            <p>Nach dem nächsten Backend-Sync erscheint hier der Spielplan.</p>
+          </div>
+        ) : (
+          <div className="match-list">
+            {state.matches.map((match) => (
+              <MatchCard
+                key={match.id}
+                match={match}
+                prediction={state.predictions.get(match.id)}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function MatchCard({
+  match,
+  prediction,
+}: {
+  match: Match;
+  prediction?: Prediction;
+}) {
+  const hasResult = match.homeScore !== null && match.awayScore !== null;
+
+  return (
+    <article className="match-card">
+      <div className="match-meta">
+        <time dateTime={match.kickoffAt}>{formatKickoff(match.kickoffAt)}</time>
+        <span className={`match-status status-${match.status}`}>
+          {matchStatusLabels[match.status]}
+        </span>
+      </div>
+
+      <div className="teams">
+        <Team name={match.homeTeam.shortName ?? match.homeTeam.name} />
+        <div className="score">
+          {hasResult ? (
+            <>
+              <strong>{match.homeScore}</strong>
+              <span>:</span>
+              <strong>{match.awayScore}</strong>
+            </>
+          ) : (
+            <span>– : –</span>
+          )}
+        </div>
+        <Team away name={match.awayTeam.shortName ?? match.awayTeam.name} />
+      </div>
+
+      <div className="prediction-row">
+        <span>Dein Tipp</span>
+        {prediction ? (
+          <div className="prediction-value">
+            <strong>
+              {prediction.predictedHomeScore} : {prediction.predictedAwayScore}
+            </strong>
+            <span className={`prediction-status prediction-${prediction.resultStatus}`}>
+              {predictionStatusLabels[prediction.resultStatus]}
+            </span>
+          </div>
+        ) : (
+          <span className="no-prediction">
+            {match.locked ? "Kein Tipp abgegeben" : "Noch offen"}
+          </span>
+        )}
+      </div>
+    </article>
+  );
+}
+
+function Team({ away = false, name }: { away?: boolean; name: string }) {
+  return (
+    <div className={`team ${away ? "team-away" : ""}`}>
+      <span className="team-badge" aria-hidden="true">
+        {name.slice(0, 2).toUpperCase()}
+      </span>
+      <strong>{name}</strong>
+    </div>
+  );
+}
+
+function DashboardLoading() {
+  return (
+    <section className="dashboard-state" aria-live="polite">
+      <span className="loading-ball" aria-hidden="true" />
+      <h1>Spielplan wird geladen</h1>
+      <p>Session und aktuelle Begegnungen werden geprüft.</p>
+    </section>
+  );
+}
+
+function formatKickoff(value: string) {
+  return new Intl.DateTimeFormat("de-DE", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Europe/Berlin",
+  }).format(new Date(value));
+}
+
+function formatShortDate(value: string) {
+  return new Intl.DateTimeFormat("de-DE", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: "Europe/Berlin",
+  }).format(new Date(value));
+}
