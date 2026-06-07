@@ -31,6 +31,9 @@ npm run lint
 npm run build
 ```
 
+There is no committed CI/CD pipeline for this repo on purpose. Local helper
+scripts live in `/.scripts`, which is intentionally ignored by Git.
+
 ## Docker
 
 Build and run the production image:
@@ -42,12 +45,18 @@ docker run --rm -p 3000:3000 tippspiel-frontend
 
 The image uses Next.js standalone output and runs as a non-root user.
 
+For local deploys on the Raspberry Pi we run the container on
+`127.0.0.1:3001` and let Nginx terminate TLS and proxy requests.
+
 ## Planned Deployment
 
 The frontend is intended to run at
 `https://tippspiel.blaue-online.com` in Docker behind an Nginx reverse proxy.
 Nginx will route frontend traffic to this container and `/api/*` traffic to the
 private NestJS BFF/API.
+
+A checked-in Nginx site example lives at
+[`deploy/nginx/tippspiel.blaue-online.com.conf`](deploy/nginx/tippspiel.blaue-online.com.conf).
 
 The architecture decision is documented in
 [`docs/adr/0001-private-wm-tippspiel-architecture.md`](docs/adr/0001-private-wm-tippspiel-architecture.md).
