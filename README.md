@@ -1,9 +1,8 @@
 # Tippspiel Frontend
 
 Public frontend repository for Kevin's private World Cup prediction game. The
-project currently contains the standard Next.js home page and the infrastructure
-needed to build and run it as a container. The real tippspiel UI will be added
-later.
+application starts with a login at `/` and exposes the authenticated match and
+prediction overview at `/tippspiel`.
 
 This project was created together with OpenClaw and Codex as a public
 vibe-coding showcase.
@@ -60,3 +59,5 @@ A checked-in Nginx site example lives at
 
 The architecture decision is documented in
 [`docs/adr/0001-private-wm-tippspiel-architecture.md`](docs/adr/0001-private-wm-tippspiel-architecture.md).
+The planned frontend increments are tracked in
+[`docs/frontend-release-plan.md`](docs/frontend-release-plan.md).
