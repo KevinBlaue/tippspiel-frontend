@@ -17,6 +17,9 @@ const instrumentSerif = Instrument_Serif({
 export const metadata: Metadata = {
   title: "90 Minuten · WM-Tippspiel",
   description: "Privates Tippspiel zur Fußball-Weltmeisterschaft 2026.",
+  icons: {
+    icon: "/icon.svg",
+  },
 };
 
 export default function RootLayout({

@@ -87,30 +87,26 @@ button:disabled {
   content: "";
 }
 
-.brand-mark,
-.compact-brand {
-  display: flex;
-  align-items: baseline;
-  font-weight: 850;
-  letter-spacing: -0.06em;
+.brand-logo {
+  display: block;
+  height: auto;
+  object-fit: contain;
+  object-position: left center;
 }
 
-.brand-mark {
+.brand-logo-login {
   position: absolute;
   top: clamp(2rem, 5vw, 4rem);
   left: clamp(3rem, 8vw, 8rem);
+  width: clamp(13rem, 24vw, 21rem);
+  border-radius: 0.45rem;
+  background: rgba(255, 253, 247, 0.94);
+  padding: 0.35rem 0.5rem;
+  box-shadow: 0 12px 32px rgba(4, 24, 17, 0.16);
 }
 
-.brand-mark span {
-  font-size: 2.35rem;
-}
-
-.brand-mark small,
-.compact-brand small {
-  margin-left: 0.32rem;
-  color: var(--green-bright);
-  font-size: 0.66rem;
-  letter-spacing: 0.08em;
+.brand-logo-nav {
+  width: clamp(10.5rem, 18vw, 15rem);
 }
 
 .login-intro .eyebrow {
@@ -133,6 +129,42 @@ button:disabled {
   color: rgba(255, 255, 255, 0.76);
   font-size: clamp(1rem, 1.7vw, 1.2rem);
   line-height: 1.7;
+}
+
+.tournament-lockup {
+  display: flex;
+  min-height: 3.6rem;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1.8rem;
+}
+
+.tournament-lockup span {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 750;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.tournament-lockup img {
+  width: auto;
+  height: 2.8rem;
+  object-fit: contain;
+}
+
+.tournament-lockup .world-cup-logo {
+  width: 8.5rem;
+  height: auto;
+  max-height: 3rem;
+}
+
+.tournament-lockup-dark span {
+  color: rgba(255, 255, 255, 0.58);
+}
+
+.tournament-lockup-dark img {
+  filter: drop-shadow(0 5px 14px rgba(0, 0, 0, 0.16));
 }
 
 .pitch-lines {
@@ -283,10 +315,6 @@ button:disabled {
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid var(--line);
-}
-
-.compact-brand span {
-  font-size: 1.55rem;
 }
 
 .header-actions {
@@ -625,9 +653,10 @@ button:disabled {
     padding: 7rem 2rem 3rem;
   }
 
-  .brand-mark {
+  .brand-logo-login {
     top: 1.8rem;
     left: 2rem;
+    width: 13rem;
   }
 
   .login-intro h1 {
@@ -662,6 +691,10 @@ button:disabled {
     padding: 0 0.5rem;
   }
 
+  .brand-logo-nav {
+    width: 9.5rem;
+  }
+
   .user-chip {
     display: none;
   }
@@ -673,6 +706,15 @@ button:disabled {
 
   .dashboard-hero h1 {
     font-size: 4.2rem;
+  }
+
+  .tournament-lockup {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .tournament-lockup span {
+    width: 100%;
   }
 
   .summary-grid div {

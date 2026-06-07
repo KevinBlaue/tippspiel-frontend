@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -119,10 +120,14 @@ export function TippspielDashboard() {
   return (
     <div className="dashboard-shell">
       <header className="dashboard-header">
-        <div className="compact-brand">
-          <span>90</span>
-          <small>MIN</small>
-        </div>
+        <Image
+          className="brand-logo brand-logo-nav"
+          src="/branding/tippspiel-logo.png"
+          alt="90 Minuten WM Tippspiel"
+          width={1400}
+          height={376}
+          priority
+        />
         <div className="header-actions">
           <span className="user-chip">{state.user.username}</span>
           <button
@@ -143,6 +148,22 @@ export function TippspielDashboard() {
             Die erste Übersicht steht. Tipps bearbeiten folgt im nächsten
             Feature-Schritt.
           </p>
+          <div className="tournament-lockup">
+            <span>Deutschland · WM 2026</span>
+            <Image
+              src="/brands/dfb-logo.svg"
+              alt="DFB"
+              width={316}
+              height={316}
+            />
+            <Image
+              className="world-cup-logo"
+              src="/brands/world-cup-26-logo.svg"
+              alt="FIFA World Cup 2026"
+              width={1450}
+              height={644}
+            />
+          </div>
         </div>
         <dl className="summary-grid">
           <div>
