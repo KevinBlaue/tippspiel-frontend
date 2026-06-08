@@ -2,13 +2,14 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
 import {
   ApiError,
   ApiUser,
   Match,
   Prediction,
+  PredictionInput,
   apiRequest,
 } from "@/lib/api";
 
@@ -97,6 +98,43 @@ export function TippspielDashboard() {
     }
   }
 
+  async function handlePredictionSave(
+    matchId: number,
+    input: PredictionInput,
+  ) {
+    try {
+      const prediction = await apiRequest<Prediction>(
+        `/api/predictions/${matchId}`,
+        {
+          method: "PUT",
+          body: JSON.stringify(input),
+        },
+      );
+
+      setState((currentState) => {
+        if (currentState.status !== "ready") {
+          return currentState;
+        }
+
+        const predictions = new Map(currentState.predictions);
+        predictions.set(matchId, prediction);
+
+        return {
+          ...currentState,
+          predictions,
+        };
+      });
+
+      return prediction;
+    } catch (requestError) {
+      if (requestError instanceof ApiError && requestError.status === 401) {
+        router.replace("/");
+      }
+
+      throw requestError;
+    }
+  }
+
   if (state.status === "loading") {
     return <DashboardLoading />;
   }
@@ -141,12 +179,12 @@ export function TippspielDashboard() {
       </header>
 
       <section className="dashboard-hero">
-        <div>
+        <div className="dashboard-hero-copy">
           <p className="eyebrow">Dein WM-Tippspiel</p>
           <h1>Spielplan</h1>
-          <p>
-            Die erste Übersicht steht. Tipps bearbeiten folgt im nächsten
-            Feature-Schritt.
+          <p className="hero-subtitle">
+            Tippe die Ergebnisse der kommenden Spiele und passe deine Tipps bis
+            zum Anpfiff an.
           </p>
           <div className="tournament-lockup">
             <span>Deutschland · WM 2026</span>
@@ -187,7 +225,7 @@ export function TippspielDashboard() {
             <p className="eyebrow">Aktueller Stand</p>
             <h2 id="matches-heading">Alle Begegnungen</h2>
           </div>
-          <span className="readonly-badge">Nur Ansicht</span>
+          <span className="prediction-entry-badge">Tipps eintragen</span>
         </div>
 
         {state.matches.length === 0 ? (
@@ -202,6 +240,7 @@ export function TippspielDashboard() {
               <MatchCard
                 key={match.id}
                 match={match}
+                onSave={handlePredictionSave}
                 prediction={state.predictions.get(match.id)}
               />
             ))}
@@ -214,12 +253,66 @@ export function TippspielDashboard() {
 
 function MatchCard({
   match,
+  onSave,
   prediction,
 }: {
   match: Match;
+  onSave: (matchId: number, input: PredictionInput) => Promise<Prediction>;
   prediction?: Prediction;
 }) {
   const hasResult = match.homeScore !== null && match.awayScore !== null;
+  const isEditable = !match.locked;
+  const [homeScore, setHomeScore] = useState(
+    prediction?.predictedHomeScore.toString() ?? "",
+  );
+  const [awayScore, setAwayScore] = useState(
+    prediction?.predictedAwayScore.toString() ?? "",
+  );
+  const [saveState, setSaveState] = useState<
+    | { status: "idle" }
+    | { status: "saving" }
+    | { status: "saved" }
+    | { status: "error"; message: string }
+  >({ status: "idle" });
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const predictedHomeScore = Number(homeScore);
+    const predictedAwayScore = Number(awayScore);
+
+    if (
+      homeScore === "" ||
+      awayScore === "" ||
+      !Number.isInteger(predictedHomeScore) ||
+      !Number.isInteger(predictedAwayScore) ||
+      predictedHomeScore < 0 ||
+      predictedAwayScore < 0
+    ) {
+      setSaveState({
+        status: "error",
+        message: "Bitte trage zwei nicht-negative ganze Ergebnisse ein.",
+      });
+      return;
+    }
+
+    setSaveState({ status: "saving" });
+
+    try {
+      const savedPrediction = await onSave(match.id, {
+        predictedHomeScore,
+        predictedAwayScore,
+      });
+      setHomeScore(savedPrediction.predictedHomeScore.toString());
+      setAwayScore(savedPrediction.predictedAwayScore.toString());
+      setSaveState({ status: "saved" });
+    } catch (requestError) {
+      setSaveState({
+        status: "error",
+        message: getPredictionErrorMessage(requestError),
+      });
+    }
+  }
 
   return (
     <article className="match-card">
@@ -246,25 +339,129 @@ function MatchCard({
         <Team away name={match.awayTeam.shortName ?? match.awayTeam.name} />
       </div>
 
-      <div className="prediction-row">
-        <span>Dein Tipp</span>
-        {prediction ? (
-          <div className="prediction-value">
-            <strong>
-              {prediction.predictedHomeScore} : {prediction.predictedAwayScore}
-            </strong>
-            <span className={`prediction-status prediction-${prediction.resultStatus}`}>
-              {predictionStatusLabels[prediction.resultStatus]}
-            </span>
+      {isEditable ? (
+        <form className="prediction-form" onSubmit={handleSubmit}>
+          <span className="prediction-label">Dein Tipp</span>
+          <div className="prediction-controls">
+            <label>
+              <span className="sr-only">
+                Tore {match.homeTeam.shortName ?? match.homeTeam.name}
+              </span>
+              <input
+                aria-label={`Tore ${match.homeTeam.shortName ?? match.homeTeam.name}`}
+                disabled={saveState.status === "saving"}
+                inputMode="numeric"
+                min="0"
+                onChange={(event) => {
+                  setHomeScore(event.target.value);
+                  setSaveState({ status: "idle" });
+                }}
+                required
+                type="number"
+                value={homeScore}
+              />
+            </label>
+            <span aria-hidden="true">:</span>
+            <label>
+              <span className="sr-only">
+                Tore {match.awayTeam.shortName ?? match.awayTeam.name}
+              </span>
+              <input
+                aria-label={`Tore ${match.awayTeam.shortName ?? match.awayTeam.name}`}
+                disabled={saveState.status === "saving"}
+                inputMode="numeric"
+                min="0"
+                onChange={(event) => {
+                  setAwayScore(event.target.value);
+                  setSaveState({ status: "idle" });
+                }}
+                required
+                type="number"
+                value={awayScore}
+              />
+            </label>
+            <button
+              className="save-prediction-button"
+              disabled={saveState.status === "saving"}
+              type="submit"
+            >
+              {saveState.status === "saving"
+                ? "Speichert …"
+                : prediction
+                  ? "Aktualisieren"
+                  : "Speichern"}
+            </button>
           </div>
-        ) : (
-          <span className="no-prediction">
-            {match.locked ? "Kein Tipp abgegeben" : "Noch offen"}
-          </span>
-        )}
-      </div>
+          <PredictionFeedback state={saveState} />
+        </form>
+      ) : (
+        <div className="prediction-row">
+          <span>Dein Tipp</span>
+          {prediction ? (
+            <div className="prediction-value">
+              <strong>
+                {prediction.predictedHomeScore} :{" "}
+                {prediction.predictedAwayScore}
+              </strong>
+              <span
+                className={`prediction-status prediction-${prediction.resultStatus}`}
+              >
+                {predictionStatusLabels[prediction.resultStatus]}
+              </span>
+            </div>
+          ) : (
+            <span className="no-prediction">Kein Tipp abgegeben</span>
+          )}
+        </div>
+      )}
     </article>
   );
+}
+
+function PredictionFeedback({
+  state,
+}: {
+  state:
+    | { status: "idle" }
+    | { status: "saving" }
+    | { status: "saved" }
+    | { status: "error"; message: string };
+}) {
+  if (state.status === "saved") {
+    return (
+      <span className="prediction-feedback prediction-feedback-success" role="status">
+        Tipp gespeichert
+      </span>
+    );
+  }
+
+  if (state.status === "error") {
+    return (
+      <span className="prediction-feedback prediction-feedback-error" role="alert">
+        {state.message}
+      </span>
+    );
+  }
+
+  return null;
+}
+
+function getPredictionErrorMessage(error: unknown) {
+  if (error instanceof ApiError) {
+    if (error.status === 400) {
+      return "Der Tipp ist ungültig. Bitte prüfe beide Ergebnisse.";
+    }
+
+    if (error.status === 409 || error.status === 423) {
+      return "Das Spiel wurde inzwischen gesperrt. Der Tipp konnte nicht gespeichert werden.";
+    }
+
+    if (error.status === 401) {
+      return "Deine Sitzung ist abgelaufen. Du wirst zur Anmeldung weitergeleitet.";
+    }
+  }
+
+  return "Der Tipp konnte nicht gespeichert werden. Bitte versuche es erneut.";
 }
 
 function Team({ away = false, name }: { away?: boolean; name: string }) {

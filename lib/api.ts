@@ -38,6 +38,11 @@ export type Prediction = {
   updatedAt: string;
 };
 
+export type PredictionInput = Pick<
+  Prediction,
+  "predictedHomeScore" | "predictedAwayScore"
+>;
+
 export class ApiError extends Error {
   constructor(
     public readonly status: number,
