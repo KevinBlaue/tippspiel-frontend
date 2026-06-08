@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 import {
   ApiError,
@@ -543,7 +544,7 @@ function PredictionDialog({
     }
   }
 
-  return (
+  return createPortal(
     <div
       className="modal-backdrop"
       onMouseDown={(event) => {
@@ -695,7 +696,8 @@ function PredictionDialog({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
