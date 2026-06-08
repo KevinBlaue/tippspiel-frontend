@@ -324,7 +324,7 @@ button:disabled {
 }
 
 .user-chip,
-.readonly-badge {
+.prediction-entry-badge {
   border-radius: 999px;
   background: rgba(21, 79, 59, 0.08);
   padding: 0.45rem 0.75rem;
@@ -367,7 +367,7 @@ button:disabled {
   line-height: 0.9;
 }
 
-.dashboard-hero > div > p:last-child {
+.hero-subtitle {
   max-width: 36rem;
   margin: 1.4rem 0 0;
   color: var(--muted);
@@ -428,6 +428,7 @@ button:disabled {
 .match-list {
   display: grid;
   gap: 0.9rem;
+  grid-template-columns: 1fr;
 }
 
 .match-card {
@@ -563,6 +564,98 @@ button:disabled {
   font-style: italic;
 }
 
+.prediction-form {
+  position: relative;
+  display: grid;
+  min-height: 4.5rem;
+  align-items: center;
+  gap: 0.7rem;
+  grid-template-columns: auto 1fr;
+  border-top: 1px solid #edf0eb;
+  padding: 0.75rem 0;
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+
+.prediction-label {
+  font-weight: 700;
+}
+
+.prediction-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.4rem;
+}
+
+.prediction-controls input {
+  width: 2.7rem;
+  height: 2.35rem;
+  border: 1px solid var(--line);
+  border-radius: 0.55rem;
+  outline: none;
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 800;
+  text-align: center;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.prediction-controls input:focus {
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px rgba(21, 79, 59, 0.11);
+}
+
+.prediction-controls input:disabled {
+  opacity: 0.7;
+}
+
+.save-prediction-button {
+  min-height: 2.35rem;
+  border: 0;
+  border-radius: 0.55rem;
+  background: var(--green);
+  padding: 0 0.75rem;
+  color: white;
+  font-size: 0.68rem;
+  font-weight: 800;
+  transition:
+    background 160ms ease,
+    transform 160ms ease;
+}
+
+.save-prediction-button:hover:not(:disabled) {
+  background: #0e3e2e;
+  transform: translateY(-1px);
+}
+
+.prediction-feedback {
+  grid-column: 1 / -1;
+  margin-top: -0.25rem;
+  line-height: 1.35;
+  text-align: right;
+}
+
+.prediction-feedback-success {
+  color: var(--green);
+}
+
+.prediction-feedback-error {
+  color: var(--red);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .empty-state,
 .dashboard-state {
   display: flex;
@@ -678,6 +771,18 @@ button:disabled {
   }
 }
 
+@media (min-width: 640px) {
+  .match-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .match-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 560px) {
   .login-intro {
     min-height: 38rem;
@@ -730,7 +835,7 @@ button:disabled {
     padding: 1rem 0.75rem;
   }
 
-  .readonly-badge {
+  .prediction-entry-badge {
     display: none;
   }
 
