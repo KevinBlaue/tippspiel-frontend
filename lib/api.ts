@@ -27,6 +27,47 @@ export type Match = {
   locked: boolean;
 };
 
+export type MatchDetails = {
+  group: string | null;
+  referees: {
+    id: number | null;
+    name: string;
+    type: string | null;
+    nationality: string | null;
+  }[];
+  venue: string | null;
+  lastUpdated: string | null;
+  goals: {
+    minute: number | null;
+    injuryTime: number | null;
+    type: string | null;
+    team: MatchEventParticipant | null;
+    scorer: MatchEventParticipant | null;
+    assist: MatchEventParticipant | null;
+    homeScore: number | null;
+    awayScore: number | null;
+  }[];
+  bookings: {
+    minute: number | null;
+    injuryTime: number | null;
+    card: string | null;
+    team: MatchEventParticipant | null;
+    player: MatchEventParticipant | null;
+  }[];
+  lineups: {
+    team: MatchEventParticipant | null;
+    formation: string | null;
+    coach: MatchEventParticipant | null;
+    starters: MatchEventParticipant[];
+    substitutes: MatchEventParticipant[];
+  }[];
+};
+
+type MatchEventParticipant = {
+  id: number | null;
+  name: string;
+};
+
 export type Prediction = {
   id: number;
   matchId: number;
@@ -114,6 +155,10 @@ export function savePrediction(
     method: "PUT",
     body: JSON.stringify(input),
   });
+}
+
+export function loadMatchDetails(matchId: number): Promise<MatchDetails> {
+  return apiRequest<MatchDetails>(`/api/matches/${matchId}/details`);
 }
 
 export function runManualSync(): Promise<SyncSummary> {

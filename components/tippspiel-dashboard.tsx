@@ -15,10 +15,12 @@ import {
   ApiError,
   ApiUser,
   Match,
+  MatchDetails,
   Prediction,
   PredictionInput,
   SyncSummary,
   loadDashboardData,
+  loadMatchDetails,
   runManualSync,
   savePrediction,
 } from "@/lib/api";
@@ -41,6 +43,11 @@ type SyncState =
   | { status: "error"; message: string };
 
 type MatchStatusFilter = "all" | "open" | "live" | "finished";
+
+type MatchDetailsState =
+  | { status: "loading" }
+  | { status: "ready"; details: MatchDetails }
+  | { status: "error" };
 
 const SYNC_COOLDOWN_MS = 6_000;
 const SYNC_COOLDOWN_STORAGE_KEY = "tippspiel.syncCooldownUntil";
@@ -588,7 +595,34 @@ function PredictionDialog({
     | { status: "saving" }
     | { status: "error"; message: string }
   >({ status: "idle" });
+  const [detailsState, setDetailsState] = useState<MatchDetailsState>({
+    status: "loading",
+  });
   const closeDialog = useEffectEvent(onClose);
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function fetchDetails() {
+      try {
+        const details = await loadMatchDetails(match.id);
+
+        if (isActive) {
+          setDetailsState({ status: "ready", details });
+        }
+      } catch {
+        if (isActive) {
+          setDetailsState({ status: "error" });
+        }
+      }
+    }
+
+    void fetchDetails();
+
+    return () => {
+      isActive = false;
+    };
+  }, [match.id]);
 
   useEffect(() => {
     const scrollY = window.scrollY;
@@ -727,6 +761,8 @@ function PredictionDialog({
           </div>
         </dl>
 
+        <MatchDetailsPanel state={detailsState} />
+
         <div className="prediction-dialog-teams">
           <TeamDisplay
             compact
@@ -841,6 +877,139 @@ function PredictionDialog({
       </div>
     </div>,
     document.body,
+  );
+}
+
+function MatchDetailsPanel({ state }: { state: MatchDetailsState }) {
+  if (state.status === "loading") {
+    return (
+      <p className="match-details-feedback" role="status">
+        Zusätzliche Spieldetails werden geladen …
+      </p>
+    );
+  }
+
+  if (state.status === "error") {
+    return (
+      <p className="match-details-feedback match-details-feedback-error">
+        Zusätzliche Spieldetails sind gerade nicht verfügbar.
+      </p>
+    );
+  }
+
+  const { details } = state;
+  const hasOverview =
+    details.group !== null ||
+    details.venue !== null ||
+    details.lastUpdated !== null ||
+    details.referees.length > 0;
+  const hasEvents =
+    details.goals.length > 0 ||
+    details.bookings.length > 0 ||
+    details.lineups.length > 0;
+
+  if (!hasOverview && !hasEvents) {
+    return null;
+  }
+
+  return (
+    <section className="match-details-panel" aria-label="Zusätzliche Spieldetails">
+      {hasOverview ? (
+        <dl className="match-details-overview">
+          {details.group ? (
+            <div>
+              <dt>Gruppe</dt>
+              <dd>{formatGroup(details.group)}</dd>
+            </div>
+          ) : null}
+          {details.venue ? (
+            <div>
+              <dt>Stadion</dt>
+              <dd>{details.venue}</dd>
+            </div>
+          ) : null}
+          {details.referees.length > 0 ? (
+            <div>
+              <dt>Schiedsrichter</dt>
+              <dd>{details.referees.map(formatReferee).join(", ")}</dd>
+            </div>
+          ) : null}
+          {details.lastUpdated ? (
+            <div>
+              <dt>Letztes Datenupdate</dt>
+              <dd>
+                <time dateTime={details.lastUpdated}>
+                  {formatDetailsUpdatedAt(details.lastUpdated)}
+                </time>
+              </dd>
+            </div>
+          ) : null}
+        </dl>
+      ) : null}
+
+      {details.goals.length > 0 ? (
+        <div className="match-event-section">
+          <h3>Tore</h3>
+          <ul>
+            {details.goals.map((goal, index) => (
+              <li key={`${goal.minute ?? "unknown"}-${goal.scorer?.id ?? index}`}>
+                {goal.minute !== null ? (
+                  <span>{formatEventMinute(goal.minute, goal.injuryTime)}</span>
+                ) : null}
+                {goal.scorer?.name ?? goal.team?.name ? (
+                  <strong>{goal.scorer?.name ?? goal.team?.name}</strong>
+                ) : null}
+                {goal.homeScore !== null && goal.awayScore !== null ? (
+                  <span>
+                    {goal.homeScore}:{goal.awayScore}
+                  </span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {details.bookings.length > 0 ? (
+        <div className="match-event-section">
+          <h3>Karten</h3>
+          <ul>
+            {details.bookings.map((booking, index) => (
+              <li key={`${booking.minute ?? "unknown"}-${booking.player?.id ?? index}`}>
+                {booking.minute !== null ? (
+                  <span>{formatEventMinute(booking.minute, booking.injuryTime)}</span>
+                ) : null}
+                {booking.player?.name ?? booking.team?.name ? (
+                  <strong>{booking.player?.name ?? booking.team?.name}</strong>
+                ) : null}
+                {booking.card ? <span>{formatCard(booking.card)}</span> : null}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {details.lineups.length > 0 ? (
+        <div className="match-event-section match-lineups">
+          <h3>Aufstellungen</h3>
+          {details.lineups.map((lineup, index) => (
+            <div className="match-lineup" key={lineup.team?.id ?? index}>
+              {lineup.team?.name || lineup.formation ? (
+                <h4>
+                  {lineup.team?.name}
+                  {lineup.team?.name && lineup.formation ? " · " : ""}
+                  {lineup.formation}
+                </h4>
+              ) : null}
+              {lineup.coach ? <p>Trainer: {lineup.coach.name}</p> : null}
+              {lineup.starters.length > 0 ? (
+                <p>{lineup.starters.map((player) => player.name).join(", ")}</p>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </section>
   );
 }
 
@@ -1067,6 +1236,43 @@ function formatRoundLabel(match: Match): string {
   }
 
   return "Runde noch offen";
+}
+
+function formatGroup(group: string): string {
+  return group.replace(/^GROUP_/, "Gruppe ").replaceAll("_", " ");
+}
+
+function formatReferee(referee: MatchDetails["referees"][number]): string {
+  return referee.nationality
+    ? `${referee.name} (${referee.nationality})`
+    : referee.name;
+}
+
+function formatDetailsUpdatedAt(value: string): string {
+  return new Intl.DateTimeFormat("de-DE", {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+
+function formatEventMinute(
+  minute: number | null,
+  injuryTime: number | null,
+): string {
+  if (minute === null) {
+    return "";
+  }
+
+  return injuryTime !== null && injuryTime > 0
+    ? `${minute}+${injuryTime}′`
+    : `${minute}′`;
+}
+
+function formatCard(card: string): string {
+  return card
+    .toLowerCase()
+    .replaceAll("_", " ")
+    .replace(/^\w/, (character) => character.toUpperCase());
 }
 
 function formatStage(stage: string): string {
