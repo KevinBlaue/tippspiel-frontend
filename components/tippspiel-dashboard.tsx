@@ -2,7 +2,13 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useEffectEvent, useState } from "react";
+import {
+  FormEvent,
+  useDeferredValue,
+  useEffect,
+  useEffectEvent,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 
 import {
@@ -34,6 +40,8 @@ type SyncState =
   | { status: "success"; summary: SyncSummary }
   | { status: "error"; message: string };
 
+type MatchStatusFilter = "all" | "open" | "live" | "finished";
+
 const SYNC_COOLDOWN_MS = 6_000;
 const SYNC_COOLDOWN_STORAGE_KEY = "tippspiel.syncCooldownUntil";
 
@@ -51,14 +59,28 @@ const predictionStatusLabels: Record<Prediction["resultStatus"], string> = {
   wrong: "Daneben",
 };
 
+const matchStatusFilters: {
+  label: string;
+  value: MatchStatusFilter;
+}[] = [
+  { label: "Alle", value: "all" },
+  { label: "Offen", value: "open" },
+  { label: "Live", value: "live" },
+  { label: "Beendet", value: "finished" },
+];
+
 export function TippspielDashboard() {
   const router = useRouter();
   const [state, setState] = useState<DashboardState>({ status: "loading" });
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [activeMatchId, setActiveMatchId] = useState<number | null>(null);
+  const [statusFilter, setStatusFilter] = useState<MatchStatusFilter>("all");
+  const [roundFilter, setRoundFilter] = useState("all");
   const [syncState, setSyncState] = useState<SyncState>({ status: "idle" });
   const [syncCooldownUntil, setSyncCooldownUntil] = useState(getInitialSyncCooldown);
   const [currentTime, setCurrentTime] = useState(() => Date.now());
+  const deferredStatusFilter = useDeferredValue(statusFilter);
+  const deferredRoundFilter = useDeferredValue(roundFilter);
 
   useEffect(() => {
     let isActive = true;
@@ -240,6 +262,13 @@ export function TippspielDashboard() {
   );
   const isSyncDisabled =
     syncState.status === "running" || syncCooldownSeconds > 0;
+  const roundOptions = getRoundOptions(state.matches);
+  const filteredMatches = state.matches.filter(
+    (match) =>
+      matchesStatusFilter(match, deferredStatusFilter) &&
+      (deferredRoundFilter === "all" ||
+        getRoundFilterValue(match) === deferredRoundFilter),
+  );
 
   return (
     <div className="dashboard-shell">
@@ -354,12 +383,58 @@ export function TippspielDashboard() {
         <div className="section-heading">
           <div>
             <p className="eyebrow">Aktueller Stand</p>
-            <h2 id="matches-heading">Alle Begegnungen</h2>
+            <h2 id="matches-heading">Begegnungen</h2>
           </div>
           <span className="prediction-entry-badge">
             Klick auf eine Kachel zum Tippen
           </span>
         </div>
+
+        {state.matches.length > 0 ? (
+          <div className="match-filters" aria-label="Spiele filtern">
+            <div className="status-filter" aria-label="Nach Status filtern">
+              {matchStatusFilters.map((filter) => {
+                const count = state.matches.filter((match) =>
+                  matchesStatusFilter(match, filter.value),
+                ).length;
+
+                return (
+                  <button
+                    aria-pressed={statusFilter === filter.value}
+                    className="status-filter-button"
+                    key={filter.value}
+                    onClick={() => setStatusFilter(filter.value)}
+                    type="button"
+                  >
+                    <span>{filter.label}</span>
+                    <span className="filter-count">{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {roundOptions.length > 1 ? (
+              <label className="round-filter">
+                <span>Runde</span>
+                <select
+                  onChange={(event) => setRoundFilter(event.target.value)}
+                  value={roundFilter}
+                >
+                  <option value="all">Alle Runden</option>
+                  {roundOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+
+            <p className="filter-result" aria-live="polite">
+              {filteredMatches.length} von {state.matches.length} Spielen
+            </p>
+          </div>
+        ) : null}
 
         {state.matches.length === 0 ? (
           <div className="empty-state">
@@ -367,9 +442,25 @@ export function TippspielDashboard() {
             <h3>Noch keine Spiele</h3>
             <p>Nach dem nächsten Backend-Sync erscheint hier der Spielplan.</p>
           </div>
+        ) : filteredMatches.length === 0 ? (
+          <div className="empty-state empty-state-filtered">
+            <span aria-hidden="true">○</span>
+            <h3>Keine passenden Spiele</h3>
+            <p>Für diese Kombination aus Status und Runde gibt es keine Begegnung.</p>
+            <button
+              className="secondary-button"
+              onClick={() => {
+                setStatusFilter("all");
+                setRoundFilter("all");
+              }}
+              type="button"
+            >
+              Filter zurücksetzen
+            </button>
+          </div>
         ) : (
           <div className="match-list">
-            {state.matches.map((match) => (
+            {filteredMatches.map((match) => (
               <MatchCard
                 key={match.id}
                 match={match}
@@ -420,6 +511,8 @@ function MatchCard({
           {matchStatusLabels[match.status]}
         </span>
       </div>
+
+      <p className="match-context">{formatMatchContext(match)}</p>
 
       <div className="teams">
         <TeamDisplay name={match.homeTeam.shortName ?? match.homeTeam.name} team={match.homeTeam} />
@@ -610,6 +703,29 @@ function PredictionDialog({
             {matchStatusLabels[match.status]}
           </span>
         </div>
+
+        <dl className="match-detail-grid">
+          <div>
+            <dt>Wettbewerb</dt>
+            <dd>{match.competition}</dd>
+          </div>
+          <div>
+            <dt>Runde</dt>
+            <dd>{formatRoundLabel(match)}</dd>
+          </div>
+          <div>
+            <dt>Anstoß</dt>
+            <dd>
+              <time dateTime={match.kickoffAt}>
+                {formatDetailedKickoff(match.kickoffAt)}
+              </time>
+            </dd>
+          </div>
+          <div>
+            <dt>Tippstatus</dt>
+            <dd>{isEditable ? "Bis Anpfiff änderbar" : "Gesperrt"}</dd>
+          </div>
+        </dl>
 
         <div className="prediction-dialog-teams">
           <TeamDisplay
@@ -883,6 +999,81 @@ function formatShortDate(value: string) {
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(value));
+}
+
+function formatDetailedKickoff(value: string) {
+  return new Intl.DateTimeFormat("de-DE", {
+    dateStyle: "full",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+
+function matchesStatusFilter(
+  match: Match,
+  filter: MatchStatusFilter,
+): boolean {
+  if (filter === "open") {
+    return match.status === "scheduled" || match.status === "postponed";
+  }
+
+  if (filter === "live") {
+    return match.status === "in_progress";
+  }
+
+  if (filter === "finished") {
+    return match.status === "finished";
+  }
+
+  return true;
+}
+
+function getRoundOptions(matches: Match[]) {
+  const options = new Map<string, string>();
+
+  matches.forEach((match) => {
+    options.set(getRoundFilterValue(match), formatRoundLabel(match));
+  });
+
+  return Array.from(options, ([value, label]) => ({ value, label })).sort(
+    (left, right) =>
+      left.label.localeCompare(right.label, "de", {
+        numeric: true,
+        sensitivity: "base",
+      }),
+  );
+}
+
+function getRoundFilterValue(match: Match): string {
+  return `${match.stage ?? ""}:${match.matchday ?? ""}`;
+}
+
+function formatMatchContext(match: Match): string {
+  return `${match.competition} · ${formatRoundLabel(match)}`;
+}
+
+function formatRoundLabel(match: Match): string {
+  const stage = match.stage?.trim();
+
+  if (stage && match.matchday !== null) {
+    return `${formatStage(stage)} · Spieltag ${match.matchday}`;
+  }
+
+  if (stage) {
+    return formatStage(stage);
+  }
+
+  if (match.matchday !== null) {
+    return `Spieltag ${match.matchday}`;
+  }
+
+  return "Runde noch offen";
+}
+
+function formatStage(stage: string): string {
+  return stage
+    .replaceAll("_", " ")
+    .toLocaleLowerCase("de-DE")
+    .replace(/(^|\s)\p{L}/gu, (character) => character.toLocaleUpperCase("de-DE"));
 }
 
 function getInitialSyncCooldown() {

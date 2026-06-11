@@ -487,6 +487,101 @@ button:disabled {
   font-size: clamp(2rem, 4vw, 3rem);
 }
 
+.match-filters {
+  display: grid;
+  align-items: end;
+  gap: 0.85rem 1rem;
+  margin: -0.25rem 0 1.5rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.status-filter {
+  display: flex;
+  min-width: 0;
+  gap: 0.35rem;
+  overflow-x: auto;
+  border-radius: 0.85rem;
+  background: #f0f1eb;
+  padding: 0.3rem;
+  scrollbar-width: none;
+}
+
+.status-filter::-webkit-scrollbar {
+  display: none;
+}
+
+.status-filter-button {
+  display: inline-flex;
+  min-height: 2.55rem;
+  flex: 1 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border: 0;
+  border-radius: 0.65rem;
+  background: transparent;
+  padding: 0 0.8rem;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.status-filter-button[aria-pressed="true"] {
+  background: white;
+  color: var(--green);
+  box-shadow: 0 3px 12px rgba(20, 48, 38, 0.08);
+}
+
+.filter-count {
+  display: grid;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(21, 79, 59, 0.09);
+  padding: 0 0.3rem;
+  font-size: 0.64rem;
+}
+
+.round-filter {
+  display: grid;
+  gap: 0.35rem;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.round-filter select {
+  min-height: 3.15rem;
+  max-width: 16rem;
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  outline: none;
+  background: white;
+  padding: 0 2.3rem 0 0.85rem;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.76rem;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.round-filter select:focus-visible,
+.status-filter-button:focus-visible {
+  outline: 3px solid rgba(21, 79, 59, 0.18);
+  outline-offset: 2px;
+}
+
+.filter-result {
+  margin: 0;
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
 .match-list {
   display: grid;
   gap: 0.9rem;
@@ -530,6 +625,17 @@ button:disabled {
   color: var(--muted);
   font-size: 0.76rem;
   font-weight: 650;
+}
+
+.match-context {
+  margin: 0.55rem 0 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .match-status,
@@ -748,6 +854,43 @@ button:disabled {
   border-bottom: 1px solid #edf0eb;
 }
 
+.match-detail-grid {
+  display: grid;
+  margin: 1rem 0 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border: 1px solid #e6e9e2;
+  border-radius: 0.9rem;
+  background: white;
+}
+
+.match-detail-grid div {
+  min-width: 0;
+  padding: 0.8rem 0.9rem;
+}
+
+.match-detail-grid div:nth-child(even) {
+  border-left: 1px solid #e6e9e2;
+}
+
+.match-detail-grid div:nth-child(n + 3) {
+  border-top: 1px solid #e6e9e2;
+}
+
+.match-detail-grid dt {
+  color: var(--muted);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.match-detail-grid dd {
+  margin: 0.3rem 0 0;
+  font-size: 0.78rem;
+  font-weight: 750;
+  line-height: 1.4;
+}
+
 .team-compact strong {
   white-space: normal;
 }
@@ -907,6 +1050,10 @@ button:disabled {
   min-height: 18rem;
   border: 1px dashed var(--line);
   border-radius: 1rem;
+}
+
+.empty-state-filtered .secondary-button {
+  margin-top: 1.1rem;
 }
 
 .empty-state > span {
@@ -1083,8 +1230,30 @@ button:disabled {
     padding: 1rem 0.75rem;
   }
 
+  .section-heading {
+    margin-bottom: 1.2rem;
+  }
+
   .prediction-entry-badge {
     display: none;
+  }
+
+  .match-filters {
+    align-items: stretch;
+    grid-template-columns: 1fr;
+  }
+
+  .status-filter {
+    width: calc(100vw - 2.5rem);
+  }
+
+  .status-filter-button {
+    min-width: 5.4rem;
+  }
+
+  .round-filter select {
+    width: 100%;
+    max-width: none;
   }
 
   .match-card {
@@ -1137,6 +1306,18 @@ button:disabled {
 
   .prediction-dialog {
     padding: 1rem;
+  }
+
+  .match-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .match-detail-grid div:nth-child(even) {
+    border-left: 0;
+  }
+
+  .match-detail-grid div + div {
+    border-top: 1px solid #e6e9e2;
   }
 }
 
