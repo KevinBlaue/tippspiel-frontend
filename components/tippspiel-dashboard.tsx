@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useEffectEvent, useState } from "react";
+import { createPortal } from "react-dom";
 
 import {
   ApiError,
@@ -278,25 +279,32 @@ export function TippspielDashboard() {
               disabled={isSyncDisabled}
               onClick={handleManualSync}
               type="button"
+              aria-label={
+                syncState.status === "running"
+                  ? "Synchronisierung läuft"
+                  : syncCooldownSeconds > 0
+                    ? `Synchronisierung in ${syncCooldownSeconds} Sekunden wieder möglich`
+                    : "Spielplan synchronisieren"
+              }
             >
-              {syncState.status === "running"
-                ? "Sync läuft …"
-                : syncCooldownSeconds > 0
-                  ? `Sync in ${syncCooldownSeconds}s`
-                  : "Jetzt synchronisieren"}
+              <SyncIcon isRunning={syncState.status === "running"} />
+              <span>
+                {syncState.status === "running"
+                  ? "Läuft"
+                  : syncCooldownSeconds > 0
+                    ? `${syncCooldownSeconds}s`
+                    : "Sync"}
+              </span>
             </button>
             {liveMatchesCount > 0 ? (
               <span className="live-indicator">
                 {liveMatchesCount} Live-Spiel
                 {liveMatchesCount === 1 ? "" : "e"}
               </span>
-            ) : (
-              <span className="sync-hint">Manueller Sync lädt danach frische Daten.</span>
-            )}
+            ) : null}
           </div>
           {syncState.status === "success" ? (
             <p className="sync-feedback sync-feedback-success" role="status">
-              Sync #{syncState.summary.syncRunId} abgeschlossen.{" "}
               {syncState.summary.matchesProcessed} Spiele aktualisiert.
             </p>
           ) : null}
@@ -487,24 +495,44 @@ function PredictionDialog({
     | { status: "saving" }
     | { status: "error"; message: string }
   >({ status: "idle" });
+  const closeDialog = useEffectEvent(onClose);
 
   useEffect(() => {
-    const previousOverflow = document.body.style.overflow;
+    const scrollY = window.scrollY;
+    const bodyStyle = document.body.style;
+    const documentStyle = document.documentElement.style;
+    const previousBodyStyles = {
+      left: bodyStyle.left,
+      overflow: bodyStyle.overflow,
+      position: bodyStyle.position,
+      right: bodyStyle.right,
+      top: bodyStyle.top,
+      width: bodyStyle.width,
+    };
+    const previousOverscrollBehavior = documentStyle.overscrollBehavior;
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
-        onClose();
+        closeDialog();
       }
     }
 
-    document.body.style.overflow = "hidden";
+    bodyStyle.position = "fixed";
+    bodyStyle.top = `-${scrollY}px`;
+    bodyStyle.left = "0";
+    bodyStyle.right = "0";
+    bodyStyle.width = "100%";
+    bodyStyle.overflow = "hidden";
+    documentStyle.overscrollBehavior = "none";
     document.addEventListener("keydown", handleKeyDown);
 
     return () => {
-      document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", handleKeyDown);
+      Object.assign(bodyStyle, previousBodyStyles);
+      documentStyle.overscrollBehavior = previousOverscrollBehavior;
+      window.scrollTo(0, scrollY);
     };
-  }, [onClose]);
+  }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -543,7 +571,7 @@ function PredictionDialog({
     }
   }
 
-  return (
+  return createPortal(
     <div
       className="modal-backdrop"
       onMouseDown={(event) => {
@@ -695,7 +723,27 @@ function PredictionDialog({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body,
+  );
+}
+
+function SyncIcon({ isRunning }: { isRunning: boolean }) {
+  return (
+    <svg
+      aria-hidden="true"
+      className={`sync-icon${isRunning ? " sync-icon-running" : ""}`}
+      fill="none"
+      viewBox="0 0 24 24"
+    >
+      <path
+        d="M20 7h-5V2M4 17h5v5M5.1 9A7.5 7.5 0 0 1 18.6 6M18.9 15A7.5 7.5 0 0 1 5.4 18"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+    </svg>
   );
 }
 
