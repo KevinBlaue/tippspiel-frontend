@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   FormEvent,
@@ -16,6 +17,7 @@ import {
   ApiUser,
   Match,
   MatchDetails,
+  LeaderboardEntry,
   Prediction,
   PredictionInput,
   SyncSummary,
@@ -34,6 +36,7 @@ type DashboardState =
       user: ApiUser;
       matches: Match[];
       predictions: Map<number, Prediction>;
+      leaderboard: LeaderboardEntry[];
     };
 
 type SyncState =
@@ -288,8 +291,16 @@ export function TippspielDashboard() {
           height={376}
           priority
         />
-        <div className="header-actions">
-          <span className="user-chip">{state.user.username}</span>
+        <nav className="header-actions" aria-label="Hauptnavigation">
+          {state.user.role === "admin" ? (
+            <Link className="nav-link" href="/admin">
+              Admin
+            </Link>
+          ) : null}
+          <span className="user-chip">
+            {state.user.username}
+            {state.user.role === "admin" ? " · Admin" : ""}
+          </span>
           <button
             className="text-button"
             disabled={isLoggingOut}
@@ -297,7 +308,7 @@ export function TippspielDashboard() {
           >
             {isLoggingOut ? "Abmelden …" : "Abmelden"}
           </button>
-        </div>
+        </nav>
       </header>
 
       <section className="dashboard-hero">
@@ -310,6 +321,7 @@ export function TippspielDashboard() {
             gesperrt.
           </p>
           <div className="hero-tools">
+            {state.user.role === "admin" ? (
             <button
               className="secondary-button sync-button"
               disabled={isSyncDisabled}
@@ -332,6 +344,7 @@ export function TippspielDashboard() {
                     : "Sync"}
               </span>
             </button>
+            ) : null}
             {liveMatchesCount > 0 ? (
               <span className="live-indicator">
                 {liveMatchesCount} Live-Spiel
@@ -385,6 +398,8 @@ export function TippspielDashboard() {
           </div>
         </dl>
       </section>
+
+      <Leaderboard entries={state.leaderboard} currentUserId={state.user.userId} />
 
       <section className="matches-section" aria-labelledby="matches-heading">
         <div className="section-heading">
@@ -568,6 +583,48 @@ function MatchCard({
         </span>
       </div>
     </button>
+  );
+}
+
+function Leaderboard({
+  entries,
+  currentUserId,
+}: {
+  entries: LeaderboardEntry[];
+  currentUserId: number;
+}) {
+  return (
+    <section className="leaderboard-section" aria-labelledby="leaderboard-heading">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">3 exakt · 1 Tordifferenz · 0 sonst</p>
+          <h2 id="leaderboard-heading">Leaderboard</h2>
+        </div>
+      </div>
+      {entries.length === 0 ? (
+        <p className="leaderboard-empty">Noch keine Spieler im Ranking.</p>
+      ) : (
+        <ol className="leaderboard-list">
+          {entries.map((entry) => (
+            <li
+              className={entry.userId === currentUserId ? "leaderboard-current" : ""}
+              key={entry.userId}
+            >
+              <span className="leaderboard-rank">{entry.rank}</span>
+              <div className="leaderboard-player">
+                <strong>{entry.username}</strong>
+                <span>
+                  {entry.exactPredictions} exakt · {entry.goalDifferencePredictions} Differenz
+                </span>
+              </div>
+              <strong className="leaderboard-points">
+                {entry.points} {entry.points === 1 ? "Punkt" : "Punkte"}
+              </strong>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
   );
 }
 
@@ -1075,11 +1132,13 @@ function createReadyState(data: {
   user: ApiUser;
   matches: Match[];
   predictions: Prediction[];
+  leaderboard: LeaderboardEntry[];
 }): Extract<DashboardState, { status: "ready" }> {
   return {
     status: "ready",
     user: data.user,
     matches: data.matches,
+    leaderboard: data.leaderboard,
     predictions: new Map(
       data.predictions.map((prediction) => [prediction.matchId, prediction]),
     ),
@@ -1136,6 +1195,10 @@ function getPredictionErrorMessage(error: unknown): string {
 
 function getSyncErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
+    if (error.status === 403) {
+      return "Der Sync ist nur für Admins verfügbar.";
+    }
+
     if (error.status === 429) {
       return "Der Sync ist gerade rate-limitiert. Bitte warte kurz vor dem nächsten Versuch.";
     }

@@ -324,6 +324,18 @@ button:disabled {
   gap: 1rem;
 }
 
+.nav-link {
+  color: var(--green);
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.nav-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.25rem;
+}
+
 .user-chip,
 .prediction-entry-badge {
   border-radius: 999px;
@@ -473,6 +485,188 @@ button:disabled {
   background: var(--surface);
   box-shadow: var(--shadow);
   padding: clamp(1.25rem, 4vw, 2.4rem);
+}
+
+.leaderboard-section {
+  margin-bottom: 1.2rem;
+  border: 1px solid rgba(21, 79, 59, 0.14);
+  border-radius: 1.3rem;
+  background:
+    linear-gradient(135deg, rgba(216, 239, 104, 0.16), transparent 48%),
+    var(--green);
+  box-shadow: var(--shadow);
+  padding: clamp(1.25rem, 4vw, 2.4rem);
+  color: white;
+}
+
+.leaderboard-section .eyebrow {
+  color: var(--green-bright);
+}
+
+.leaderboard-section .section-heading {
+  margin-bottom: 1rem;
+}
+
+.leaderboard-section .section-heading h2 {
+  color: white;
+}
+
+.leaderboard-list {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: leaderboard;
+}
+
+.leaderboard-list li {
+  display: grid;
+  align-items: center;
+  gap: 0.9rem;
+  grid-template-columns: 2rem minmax(0, 1fr) auto;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.85rem;
+  background: rgba(255, 255, 255, 0.07);
+  padding: 0.8rem 0.9rem;
+}
+
+.leaderboard-list li.leaderboard-current {
+  border-color: rgba(216, 239, 104, 0.68);
+  background: rgba(216, 239, 104, 0.12);
+}
+
+.leaderboard-rank {
+  color: var(--green-bright);
+  font-family: var(--font-display), serif;
+  font-size: 1.8rem;
+  line-height: 1;
+  text-align: center;
+}
+
+.leaderboard-player {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.leaderboard-player span,
+.leaderboard-empty {
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 0.73rem;
+}
+
+.leaderboard-points {
+  color: var(--green-bright);
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.admin-hero {
+  padding: clamp(3.5rem, 8vw, 6rem) 0 2.5rem;
+}
+
+.admin-hero h1 {
+  margin: 0;
+  font-family: var(--font-display), serif;
+  font-size: clamp(3.5rem, 8vw, 6.5rem);
+  font-weight: 400;
+  letter-spacing: -0.05em;
+  line-height: 0.9;
+}
+
+.admin-hero > p:last-child {
+  max-width: 38rem;
+  margin: 1.25rem 0 0;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.admin-grid {
+  display: grid;
+  align-items: start;
+  gap: 1.2rem;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+}
+
+.admin-card {
+  border-radius: 1.3rem;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  padding: clamp(1.25rem, 4vw, 2.2rem);
+}
+
+.admin-card h2 {
+  margin: 0;
+  font-family: var(--font-display), serif;
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 400;
+  letter-spacing: -0.04em;
+}
+
+.admin-form {
+  display: grid;
+  gap: 1.15rem;
+  margin-top: 1.5rem;
+}
+
+.form-success {
+  margin: -0.25rem 0 0;
+  border-left: 3px solid var(--green);
+  padding-left: 0.8rem;
+  color: var(--green);
+  font-size: 0.88rem;
+}
+
+.compact-heading {
+  margin-bottom: 1rem;
+}
+
+.user-list {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.user-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 0.85rem;
+  background: white;
+  padding: 0.85rem 0.95rem;
+}
+
+.user-list li > div {
+  display: grid;
+  gap: 0.18rem;
+}
+
+.user-list li > div span {
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.account-state {
+  border-radius: 999px;
+  background: #e1f0e7;
+  padding: 0.3rem 0.55rem;
+  color: var(--green);
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.account-state-banned {
+  background: #fae6df;
+  color: var(--red);
+}
+
+.link-button {
+  display: inline-flex;
+  text-decoration: none;
 }
 
 .section-heading {
@@ -1255,6 +1449,10 @@ button:disabled {
   .prediction-dialog {
     width: min(100%, 36rem);
   }
+
+  .admin-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (min-width: 640px) {
@@ -1290,6 +1488,10 @@ button:disabled {
     display: none;
   }
 
+  .header-actions {
+    gap: 0.7rem;
+  }
+
   .dashboard-hero {
     padding-right: 0.5rem;
     padding-left: 0.5rem;
@@ -1319,6 +1521,25 @@ button:disabled {
 
   .matches-section {
     padding: 1rem 0.75rem;
+  }
+
+  .leaderboard-section,
+  .admin-card {
+    border-radius: 1rem;
+    padding: 1rem 0.85rem;
+  }
+
+  .leaderboard-list li {
+    grid-template-columns: 1.6rem minmax(0, 1fr);
+  }
+
+  .leaderboard-points {
+    grid-column: 2;
+  }
+
+  .admin-hero {
+    padding-right: 0.5rem;
+    padding-left: 0.5rem;
   }
 
   .section-heading {

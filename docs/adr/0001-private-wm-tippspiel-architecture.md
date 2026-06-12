@@ -1,12 +1,16 @@
 # ADR 0001: Architektur fuer ein privates WM-Tippspiel
 
-- Status: Accepted
+- Status: Superseded for user management by the multi-user MVP from 2026-06-12
 - Datum: 2026-06-05
 - Owner: Kevin Blaue
 
 ## Kontext
 
 Es soll eine kleine Website unter einer Subdomain von `blaue-online.com` entstehen, die nur fuer Kevin gedacht ist und ein einfaches WM-Tippspiel abbildet.
+
+> Update 2026-06-12: Das System laeuft jetzt als privates Mehrbenutzer-Tippspiel
+> mit Admin-Rolle, Spieleranlage und Leaderboard. Die folgenden
+> Single-User-Aussagen dokumentieren die urspruengliche Entscheidung.
 
 Wichtige Rahmenbedingungen:
 
