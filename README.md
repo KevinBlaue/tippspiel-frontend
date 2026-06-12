@@ -1,8 +1,9 @@
 # Tippspiel Frontend
 
 Public frontend repository for Kevin's private World Cup prediction game. The
-application starts with a login at `/` and exposes the authenticated match and
-prediction overview at `/tippspiel`.
+application starts with a login at `/` and exposes the authenticated match,
+prediction and leaderboard overview at `/tippspiel`. Admins can create player
+accounts at `/admin` and trigger the manual match sync.
 
 This project was created together with OpenClaw and Codex as a public
 vibe-coding showcase.

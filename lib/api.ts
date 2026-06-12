@@ -1,6 +1,14 @@
 export type ApiUser = {
-  userId: string;
+  userId: number;
   username: string;
+  role: "admin" | "player";
+};
+
+export type AdminUser = {
+  id: number;
+  username: string;
+  role: "admin" | "player";
+  isBanned: boolean;
 };
 
 export type Team = {
@@ -90,10 +98,21 @@ export type SyncSummary = {
   predictionsUpdated: number;
 };
 
+export type LeaderboardEntry = {
+  rank: number;
+  userId: number;
+  username: string;
+  points: number;
+  exactPredictions: number;
+  goalDifferencePredictions: number;
+  scoredPredictions: number;
+};
+
 export type DashboardData = {
   user: ApiUser;
   matches: Match[];
   predictions: Prediction[];
+  leaderboard: LeaderboardEntry[];
 };
 
 export class ApiError extends Error {
@@ -135,15 +154,17 @@ export async function apiRequest<T = void>(
 
 export async function loadDashboardData(): Promise<DashboardData> {
   const session = await apiRequest<{ user: ApiUser }>("/api/auth/me");
-  const [matches, predictions] = await Promise.all([
+  const [matches, predictions, leaderboard] = await Promise.all([
     apiRequest<Match[]>("/api/matches"),
     apiRequest<Prediction[]>("/api/predictions"),
+    apiRequest<LeaderboardEntry[]>("/api/leaderboard"),
   ]);
 
   return {
     user: session.user,
     matches,
     predictions,
+    leaderboard,
   };
 }
 
@@ -164,6 +185,20 @@ export function loadMatchDetails(matchId: number): Promise<MatchDetails> {
 export function runManualSync(): Promise<SyncSummary> {
   return apiRequest<SyncSummary>("/api/admin/sync", {
     method: "POST",
+  });
+}
+
+export function loadAdminUsers(): Promise<AdminUser[]> {
+  return apiRequest<AdminUser[]>("/api/admin/users");
+}
+
+export function createPlayer(input: {
+  username: string;
+  password: string;
+}): Promise<AdminUser> {
+  return apiRequest<AdminUser>("/api/admin/users", {
+    method: "POST",
+    body: JSON.stringify(input),
   });
 }
 
