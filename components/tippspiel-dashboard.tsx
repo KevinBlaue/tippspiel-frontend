@@ -818,7 +818,7 @@ function PredictionDialog({
           </div>
         </dl>
 
-        <MatchDetailsPanel state={detailsState} />
+        <MatchDetailsPanel match={match} state={detailsState} />
 
         <div className="prediction-dialog-teams">
           <TeamDisplay
@@ -937,7 +937,13 @@ function PredictionDialog({
   );
 }
 
-function MatchDetailsPanel({ state }: { state: MatchDetailsState }) {
+function MatchDetailsPanel({
+  match,
+  state,
+}: {
+  match: Match;
+  state: MatchDetailsState;
+}) {
   if (state.status === "loading") {
     return (
       <p className="match-details-feedback" role="status">
@@ -966,7 +972,17 @@ function MatchDetailsPanel({ state }: { state: MatchDetailsState }) {
     details.lineups.length > 0;
 
   if (!hasOverview && !hasEvents) {
-    return null;
+    return (
+      <section className="match-details-panel" aria-label="Zusätzliche Spieldetails">
+        <div className="match-details-empty-state">
+          <h3>Keine erweiterten Spieldetails vorhanden</h3>
+          <p>
+            Für dieses Spiel liegen aktuell nur die Basisdaten vor. Sobald das
+            Backend mehr Details liefert, erscheinen sie hier.
+          </p>
+        </div>
+      </section>
+    );
   }
 
   return (
@@ -982,13 +998,19 @@ function MatchDetailsPanel({ state }: { state: MatchDetailsState }) {
           {details.venue ? (
             <div>
               <dt>Stadion</dt>
-              <dd>{details.venue}</dd>
+              <dd>{formatVenue(details.venue)}</dd>
             </div>
           ) : null}
           {details.referees.length > 0 ? (
             <div>
               <dt>Schiedsrichter</dt>
-              <dd>{details.referees.map(formatReferee).join(", ")}</dd>
+              <dd className="match-details-list">
+                {details.referees.map((referee, index) => (
+                  <span key={`${referee.id ?? referee.name}-${index}`}>
+                    {formatReferee(referee)}
+                  </span>
+                ))}
+              </dd>
             </div>
           ) : null}
           {details.lastUpdated ? (
@@ -1009,18 +1031,30 @@ function MatchDetailsPanel({ state }: { state: MatchDetailsState }) {
           <h3>Tore</h3>
           <ul>
             {details.goals.map((goal, index) => (
-              <li key={`${goal.minute ?? "unknown"}-${goal.scorer?.id ?? index}`}>
-                {goal.minute !== null ? (
-                  <span>{formatEventMinute(goal.minute, goal.injuryTime)}</span>
-                ) : null}
-                {goal.scorer?.name ?? goal.team?.name ? (
-                  <strong>{goal.scorer?.name ?? goal.team?.name}</strong>
-                ) : null}
-                {goal.homeScore !== null && goal.awayScore !== null ? (
-                  <span>
-                    {goal.homeScore}:{goal.awayScore}
+              <li
+                className="match-event-card"
+                key={`${goal.minute ?? "unknown"}-${goal.scorer?.id ?? index}`}
+              >
+                <div className="match-event-headline">
+                  <span className="match-event-minute">
+                    {formatEventMinute(goal.minute, goal.injuryTime)}
                   </span>
-                ) : null}
+                  <strong>{formatGoalHeadline(goal)}</strong>
+                  {goal.type ? (
+                    <span className="match-event-tag">
+                      {formatGoalType(goal.type)}
+                    </span>
+                  ) : null}
+                </div>
+                <div className="match-event-meta">
+                  {goal.team?.name ? <span>Team: {goal.team.name}</span> : null}
+                  {goal.homeScore !== null && goal.awayScore !== null ? (
+                    <span>
+                      Spielstand: {formatScore(goal.homeScore, goal.awayScore)}
+                    </span>
+                  ) : null}
+                  {goal.assist?.name ? <span>Assist: {goal.assist.name}</span> : null}
+                </div>
               </li>
             ))}
           </ul>
@@ -1032,14 +1066,27 @@ function MatchDetailsPanel({ state }: { state: MatchDetailsState }) {
           <h3>Karten</h3>
           <ul>
             {details.bookings.map((booking, index) => (
-              <li key={`${booking.minute ?? "unknown"}-${booking.player?.id ?? index}`}>
-                {booking.minute !== null ? (
-                  <span>{formatEventMinute(booking.minute, booking.injuryTime)}</span>
-                ) : null}
-                {booking.player?.name ?? booking.team?.name ? (
-                  <strong>{booking.player?.name ?? booking.team?.name}</strong>
-                ) : null}
-                {booking.card ? <span>{formatCard(booking.card)}</span> : null}
+              <li
+                className="match-event-card"
+                key={`${booking.minute ?? "unknown"}-${booking.player?.id ?? index}`}
+              >
+                <div className="match-event-headline">
+                  <span className="match-event-minute">
+                    {formatEventMinute(booking.minute, booking.injuryTime)}
+                  </span>
+                  <strong>{booking.player?.name ?? booking.team?.name ?? "Unbekannt"}</strong>
+                  {booking.card ? (
+                    <span className="match-event-tag">
+                      {formatCard(booking.card)}
+                    </span>
+                  ) : null}
+                </div>
+                <div className="match-event-meta">
+                  {booking.team?.name ? <span>Team: {booking.team.name}</span> : null}
+                  {booking.player?.name && booking.team?.name ? (
+                    <span>{formatBookingContext(booking)}</span>
+                  ) : null}
+                </div>
               </li>
             ))}
           </ul>
@@ -1051,16 +1098,24 @@ function MatchDetailsPanel({ state }: { state: MatchDetailsState }) {
           <h3>Aufstellungen</h3>
           {details.lineups.map((lineup, index) => (
             <div className="match-lineup" key={lineup.team?.id ?? index}>
-              {lineup.team?.name || lineup.formation ? (
-                <h4>
-                  {lineup.team?.name}
-                  {lineup.team?.name && lineup.formation ? " · " : ""}
-                  {lineup.formation}
-                </h4>
-              ) : null}
+              <div className="match-lineup-header">
+                <h4>{lineup.team?.name ?? getFallbackLineupTeamName(match, index)}</h4>
+                {lineup.formation ? (
+                  <span className="match-event-tag">{lineup.formation}</span>
+                ) : null}
+              </div>
               {lineup.coach ? <p>Trainer: {lineup.coach.name}</p> : null}
               {lineup.starters.length > 0 ? (
-                <p>{lineup.starters.map((player) => player.name).join(", ")}</p>
+                <div className="match-lineup-group">
+                  <h5>Startelf</h5>
+                  <p>{lineup.starters.map((player) => player.name).join(", ")}</p>
+                </div>
+              ) : null}
+              {lineup.substitutes.length > 0 ? (
+                <div className="match-lineup-group">
+                  <h5>Bank</h5>
+                  <p>{lineup.substitutes.map((player) => player.name).join(", ")}</p>
+                </div>
               ) : null}
             </div>
           ))}
@@ -1306,9 +1361,17 @@ function formatGroup(group: string): string {
 }
 
 function formatReferee(referee: MatchDetails["referees"][number]): string {
-  return referee.nationality
-    ? `${referee.name} (${referee.nationality})`
-    : referee.name;
+  const segments = [referee.name];
+
+  if (referee.type) {
+    segments.push(formatOfficialType(referee.type));
+  }
+
+  if (referee.nationality) {
+    segments.push(referee.nationality);
+  }
+
+  return segments.join(" · ");
 }
 
 function formatDetailsUpdatedAt(value: string): string {
@@ -1323,7 +1386,7 @@ function formatEventMinute(
   injuryTime: number | null,
 ): string {
   if (minute === null) {
-    return "";
+    return "Minute k. A.";
   }
 
   return injuryTime !== null && injuryTime > 0
@@ -1332,10 +1395,108 @@ function formatEventMinute(
 }
 
 function formatCard(card: string): string {
+  const normalized = card.trim().toLowerCase();
+
+  if (normalized === "yellow_red" || normalized === "yellow-red") {
+    return "Gelb-Rot";
+  }
+
+  if (normalized === "yellow") {
+    return "Gelb";
+  }
+
+  if (normalized === "red") {
+    return "Rot";
+  }
+
   return card
     .toLowerCase()
     .replaceAll("_", " ")
     .replace(/^\w/, (character) => character.toUpperCase());
+}
+
+function formatGoalHeadline(goal: MatchDetails["goals"][number]): string {
+  const scorer = goal.scorer?.name?.trim();
+
+  if (scorer) {
+    return scorer;
+  }
+
+  if (goal.type && isOwnGoalType(goal.type) && goal.team?.name) {
+    return `Eigentor zugunsten von ${goal.team.name}`;
+  }
+
+  return goal.team?.name ?? "Tor";
+}
+
+function formatGoalType(type: string): string {
+  const normalized = type.trim().toLowerCase().replaceAll("-", "_");
+
+  if (normalized === "own_goal") {
+    return "Eigentor";
+  }
+
+  if (normalized === "penalty") {
+    return "Elfmeter";
+  }
+
+  if (normalized === "penalty_shootout") {
+    return "Elfmeterschießen";
+  }
+
+  return formatLooseEnum(type);
+}
+
+function formatOfficialType(type: string): string {
+  const normalized = type.trim().toLowerCase().replaceAll("-", "_");
+
+  if (normalized === "referee") {
+    return "Schiedsrichter";
+  }
+
+  if (normalized === "assistant_referee") {
+    return "Assistent";
+  }
+
+  if (normalized === "video_assistant_referee") {
+    return "VAR";
+  }
+
+  if (normalized === "fourth_official") {
+    return "Vierter Offizieller";
+  }
+
+  return formatLooseEnum(type);
+}
+
+function formatVenue(venue: string): string {
+  return venue.replace(/\s*,\s*/g, ", ");
+}
+
+function formatScore(homeScore: number, awayScore: number): string {
+  return `${homeScore}:${awayScore}`;
+}
+
+function formatBookingContext(booking: MatchDetails["bookings"][number]): string {
+  return `${booking.player?.name} (${booking.team?.name})`;
+}
+
+function formatLooseEnum(value: string): string {
+  return value
+    .trim()
+    .replaceAll("_", " ")
+    .toLocaleLowerCase("de-DE")
+    .replace(/(^|\s)\p{L}/gu, (character) => character.toLocaleUpperCase("de-DE"));
+}
+
+function isOwnGoalType(type: string): boolean {
+  return type.trim().toLowerCase().replaceAll("-", "_") === "own_goal";
+}
+
+function getFallbackLineupTeamName(match: Match, index: number): string {
+  return index === 0
+    ? match.homeTeam.shortName ?? match.homeTeam.name
+    : match.awayTeam.shortName ?? match.awayTeam.name;
 }
 
 function formatStage(stage: string): string {
